@@ -34,12 +34,13 @@ on('change:campaign:turnorder', function() {
   var oldtimer = findObjs({
     _type: 'text',
     _pageid: Campaign().get("playerpageid"), 
+    top: 70,
+    left: 70,
+    width: 70,
+    height: 70
   })[0];
 
-  var response = JSON.stringify(oldtimer)
-
-  log(response)
-  //if (oldtimer){oldtimer.remove()}
+  if (oldtimer){oldtimer.remove()}
 
   var turnorder = Campaign().get('turnorder');
   
@@ -75,7 +76,7 @@ on('change:campaign:turnorder', function() {
         
         state.timer[activePlayerId] = {
           textObjId: timerText.get('_id'),
-          time: 45,
+          time: 30,
           timeout: null
         };
 
