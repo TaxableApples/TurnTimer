@@ -1,8 +1,56 @@
 var state = state || {};
 state.timer = state.timer || {};
 
-function updateTimer(activePlayerId) {
+var timer_x = 100,
+timer_y = 100,
+fontSize = 150
 
+function createNewTimer(){
+  var turnorder = Campaign().get('turnorder');
+  
+  if (turnorder && turnorder !== "[]") {
+
+    var turnorderArray = JSON.parse(turnorder);
+    
+    if (turnorderArray.length > 0) {
+
+      var activePlayerId = turnorderArray[0].id;
+
+      var token = findObjs({
+        _type: 'graphic',
+        _subtype: 'token',
+        id: activePlayerId,
+        layer: 'objects',
+      })[0];
+
+      if (token) {
+        var timerText = createObj('text', {
+          pageid: Campaign().get('playerpageid'),
+          name: "Timer",
+          layer: 'gmlayer',
+          font_family: 'Tahoma',
+          top: timer_y,
+          left: timer_x,
+          width: timer_x,
+          height: timer_y,
+          text: '30',
+          font_size: fontSize,
+          color: '#FF0000',
+        });
+        
+        state.timer[activePlayerId] = {
+          textObjId: timerText.get('_id'),
+          time: 30,
+          timeout: null
+        };
+
+        updateTimer(activePlayerId);
+      }
+    }
+  }
+}
+
+function updateTimer(activePlayerId) {
   try {
     if (state.timer[activePlayerId].time >= 0) {
 
@@ -29,59 +77,27 @@ function updateTimer(activePlayerId) {
   }
 }
 
-on('change:campaign:turnorder', function() {
-
+function removeOldTimer(){
   var oldtimer = findObjs({
     _type: 'text',
     _pageid: Campaign().get("playerpageid"), 
-    top: 70,
-    left: 70,
-    width: 70,
-    height: 70
+    top: timer_y,
+    left: timer_x,
+    width: timer_x,
+    height: timer_y
   })[0];
 
   if (oldtimer){oldtimer.remove()}
+}
 
-  var turnorder = Campaign().get('turnorder');
-  
-  if (turnorder && turnorder !== "[]") {
+on('change:campaign:turnorder', function() {
+  removeOldTimer();
+  createNewTimer();
+});
 
-    var turnorderArray = JSON.parse(turnorder);
-    
-    if (turnorderArray.length > 0) {
-
-      var activePlayerId = turnorderArray[0].id;
-
-      var token = findObjs({
-        _type: 'graphic',
-        _subtype: 'token',
-        id: activePlayerId,
-        layer: 'objects',
-      })[0];
-
-      if (token) {
-        var timerText = createObj('text', {
-          pageid: Campaign().get('playerpageid'),
-          name: "Timer",
-          layer: 'gmlayer',
-          font_family: 'Tahoma',
-          top: 70,
-          left: 70,
-          width: 70,
-          height: 70,
-          text: '30',
-          font_size: 70,
-          color: '#FF0000',
-        });
-        
-        state.timer[activePlayerId] = {
-          textObjId: timerText.get('_id'),
-          time: 30,
-          timeout: null
-        };
-
-        updateTimer(activePlayerId);
-      }
-    }
+on('chat:message', function(msg) {
+  if (msg.type === 'api' && msg.content.indexOf('!eot') === 0) {
+    removeOldTimer();
+    createNewTimer();
   }
 });
