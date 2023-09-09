@@ -10,11 +10,14 @@ on('ready', ()=>{
   TimerLayer = 'gmlayer'
 
   function createNewTimer(){
+    removeOldTimer()
+
     var turnorder = Campaign().get('turnorder');
     if (turnorder && turnorder !== "[]") {
       var turnorderArray = JSON.parse(turnorder);
       if (turnorderArray.length > 0) {
         var activePlayerId = turnorderArray[0].id;
+
         var token = findObjs({
           _type: 'graphic',
           _subtype: 'token',
@@ -33,14 +36,14 @@ on('ready', ()=>{
             left: tokenLeft-100,
             width: timer_x,
             height: timer_y,
-            text: TurnTimeLimit.toString(),
+            text: '',
             font_size: fontSize,
             color: '#FF0000',
           });
-          
+
           state.timer[activePlayerId] = {
             textObjId: timerText.get('_id'),
-            time: TurnTimeLimit
+            time: ''
           };
 
           var startTime = new Date().getTime();
@@ -56,31 +59,48 @@ on('ready', ()=>{
     var elapsedTime = (startTime - currentTime) / 1000;
     var turnRemaining = Math.round(TurnTimeLimit + elapsedTime);
 
+    var minutes = Math.floor(turnRemaining / 60);
+    var seconds = turnRemaining % 60;
+    var formattedTime = minutes > 0 ? minutes + ':' + (seconds < 10 ? '0' : '') + seconds : seconds;
+
+    if (Object.keys(state.timer).length > 0){
+      if (Object.keys(state.timer)[0] !== activePlayerId){
+        return false
+      }
+    }
+
     try {
-      if (turnRemaining >= 0) {
+      if (turnRemaining >= 0 && Object.keys(state.timer).length > 0) {
         var timerTextObj = getObj('text', state.timer[activePlayerId].textObjId);
         if (timerTextObj) {
           timerTextObj.set('text', state.timer[activePlayerId].time.toString());
         }
-        
-        state.timer[activePlayerId].time = turnRemaining;
+        state.timer[activePlayerId].time = formattedTime;
         setTimeout(function() {
           updateTimer(activePlayerId, startTime);
         }, 1000);
       } else {
-        var timerTextObj = getObj('text', state.timer[activePlayerId].textObjId);
-        if (timerTextObj) {
-          timerTextObj.remove();
+        if(Object.keys(state.timer).length > 0){
+          var timerTextObj = getObj('text', state.timer[activePlayerId].textObjId);
+          
+          if (timerTextObj) {
+            timerTextObj.remove();
+          }
+
+          delete state.timer[activePlayerId];
         }
       }
 
     } catch (error) {
-      log("error updating TurnTimer!")
+      log("error updating TurnTimer - probably deleted!")
       log(error)
     }
   }
+  
 
   function removeOldTimer(){
+    state.timer = {};
+
     var oldtimer = findObjs({
       _type: 'text',
       _pageid: Campaign().get("playerpageid"),
@@ -89,16 +109,15 @@ on('ready', ()=>{
     })[0];
 
     if (oldtimer){oldtimer.remove()}
+
   }
 
   on('change:campaign:turnorder', function() {
-    removeOldTimer();
     createNewTimer();
   });
 
   on('chat:message', function(msg) {
     if (msg.type === 'api' && msg.content.indexOf('!eot') === 0 || msg.type === 'api' && msg.content.indexOf('!pot') === 0) {
-      removeOldTimer();
       createNewTimer();
     }
   });
